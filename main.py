@@ -14,6 +14,13 @@ Usage:
 """
 
 import argparse
+from dotenv import load_dotenv
+
+load_dotenv()  # reads GROQ_API_KEY (and any other vars) from a .env file if present
+
+import os
+if not os.getenv("GROQ_API_KEY"):
+    print("WARNING: GROQ_API_KEY not found. Check your .env file exists in the project root.")
 
 from src.ingest import ingest_pdf
 from src.query import answer_question

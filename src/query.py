@@ -1,22 +1,42 @@
 """
-Retrieves relevant chunks for a question and asks Ollama to answer using them.
+src/query.py
+Retrieves relevant chunks for a question and asks Groq (free, fast API) to answer.
 Not meant to be run directly — called from main.py.
+
+Requires:
+    GROQ_API_KEY environment variable (free key: https://console.groq.com/keys)
 """
 
-import chromadb
-import requests
 from sentence_transformers import SentenceTransformer
+import chromadb
+from groq import Groq
 
 CHROMA_PATH = "./chroma_db"
 COLLECTION_NAME = "documents"
 EMBED_MODEL = "all-MiniLM-L6-v2"
-TOP_K = 4
-OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "llama3.2:3b"  
+TOP_K = 5
+GROQ_MODEL = "openai/gpt-oss-20b"  # free, very fast. Try "llama-3.3-70b-versatile" for better quality
+
+_model = None  # embedding model loaded once, reused across calls
+_groq_client = None
+
+
+def get_model():
+    global _model
+    if _model is None:
+        _model = SentenceTransformer(EMBED_MODEL)
+    return _model
+
+
+def get_groq_client():
+    global _groq_client
+    if _groq_client is None:
+        _groq_client = Groq()  # reads GROQ_API_KEY from env
+    return _groq_client
 
 
 def retrieve(question, top_k=TOP_K):
-    model = SentenceTransformer(EMBED_MODEL)
+    model = get_model()
     query_embedding = model.encode([question]).tolist()
 
     client = chromadb.PersistentClient(path=CHROMA_PATH)
@@ -48,21 +68,18 @@ Question: {question}
 Answer:"""
 
 
-def ask_ollama(prompt):
-    response = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": OLLAMA_MODEL,
-            "prompt": prompt,
-            "stream": False,
-        },
+def ask_groq(prompt):
+    client = get_groq_client()
+    response = client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=500,
     )
-    response.raise_for_status()
-    return response.json()["response"]
+    return response.choices[0].message.content
 
 
 def answer_question(question, top_k=TOP_K, verbose=True):
-    """Full pipeline: retrieve -> build prompt -> ask Ollama. Returns the answer string."""
+    """Full pipeline: retrieve -> build prompt -> ask Groq. Returns the answer string."""
     chunks = retrieve(question, top_k=top_k)
 
     if verbose:
@@ -73,6 +90,6 @@ def answer_question(question, top_k=TOP_K, verbose=True):
     prompt = build_prompt(question, chunks)
 
     if verbose:
-        print(f"\nAsking Ollama ({OLLAMA_MODEL}) ...\n")
+        print(f"\nAsking Groq ({GROQ_MODEL}) ...\n")
 
-    return ask_ollama(prompt)
+    return ask_groq(prompt)
