@@ -4,193 +4,414 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Study Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --ink: #1a1a1a;
-    --paper: #fafaf8;
-    --line: #e0ddd6;
-    --accent: #2d5c4a;
-    --accent-soft: #e8f0ec;
-    --muted: #6b6b64;
+    --paper: #efe7d3;
+    --card: #f8f3e6;
+    --ink: #262115;
+    --muted: #8a7c5e;
+    --accent: #3f6b52;
+    --accent-soft: #e4ede4;
+    --tab: #b6822f;
+    --tab-soft: #f2e3bc;
+    --line: #d9cca6;
+    --rule: rgba(38, 33, 21, 0.09);
+    --danger: #a1452f;
   }
+
   * { box-sizing: border-box; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
   body {
     margin: 0;
-    font-family: 'Georgia', 'Times New Roman', serif;
+    font-family: 'Source Sans 3', -apple-system, sans-serif;
     background: var(--paper);
+    background-image:
+      radial-gradient(ellipse at top, rgba(255,255,255,0.5), transparent 60%);
     color: var(--ink);
     display: flex;
     justify-content: center;
     min-height: 100vh;
   }
-  .app {
+
+  .room {
     width: 100%;
-    max-width: 720px;
-    padding: 40px 24px 80px;
+    max-width: 640px;
+    padding: 56px 20px 100px;
   }
+
+  .masthead { margin-bottom: 40px; }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 12px;
+  }
+
   h1 {
-    font-size: 1.6rem;
+    font-family: 'Fraunces', Georgia, serif;
+    font-style: italic;
     font-weight: 600;
-    margin: 0 0 4px;
+    font-size: clamp(2.1rem, 5vw, 2.7rem);
+    margin: 0 0 12px;
+    line-height: 1.05;
     letter-spacing: -0.01em;
   }
+
   .subtitle {
     color: var(--muted);
-    font-size: 0.92rem;
-    margin: 0 0 32px;
-    font-family: -apple-system, sans-serif;
+    font-size: 1rem;
+    line-height: 1.55;
+    max-width: 46ch;
+    margin: 0;
   }
-  .card {
+
+  .catalog, .notebook {
+    position: relative;
+    background: var(--card);
     border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    background: white;
+    border-radius: 4px;
+    margin-top: 38px;
+    box-shadow: 0 1px 0 var(--line), 0 14px 30px -22px rgba(38, 33, 21, 0.45);
   }
-  .card h2 {
-    font-size: 0.78rem;
+
+  .tab {
+    position: absolute;
+    top: -16px;
+    left: 22px;
+    background: var(--tab);
+    color: #fff;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    padding: 6px 13px 5px;
+    border-radius: 3px 3px 0 0;
+  }
+
+  .tab.green { background: var(--accent); }
+
+  .catalog-body { padding: 32px 24px 22px; }
+
+  .field-label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
     color: var(--muted);
-    margin: 0 0 14px;
-    font-family: -apple-system, sans-serif;
-    font-weight: 600;
+    margin-bottom: 10px;
   }
-  input[type="file"] {
-    font-family: -apple-system, sans-serif;
-    font-size: 0.9rem;
+
+  .dropzone {
+    border: 1.5px dashed var(--line);
+    border-radius: 4px;
+    padding: 22px 18px;
+    text-align: center;
+    cursor: pointer;
+    background: rgba(255,255,255,0.4);
+    transition: border-color 0.15s ease, background 0.15s ease;
   }
+  .dropzone:hover, .dropzone:focus-visible { border-color: var(--accent); background: var(--accent-soft); outline: none; }
+  .dropzone.drag { border-color: var(--accent); background: var(--accent-soft); }
+  .dropzone.has-file { border-style: solid; }
+
+  .dz-text { font-size: 0.92rem; color: var(--muted); }
+  .dz-text strong { color: var(--ink); font-weight: 600; }
+  .link-btn {
+    background: none; border: none; padding: 0; margin: 0;
+    color: var(--accent); font-weight: 600; text-decoration: underline;
+    text-underline-offset: 2px; cursor: pointer; font-size: inherit; font-family: inherit;
+  }
+  .link-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  .catalog-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px dashed var(--line);
+  }
+
+  .stamp {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .stamp.ready { color: var(--accent); font-weight: 600; }
+  .stamp.error { color: var(--danger); font-weight: 600; }
+
   button {
-    font-family: -apple-system, sans-serif;
+    font-family: 'Source Sans 3', -apple-system, sans-serif;
     background: var(--accent);
     color: white;
     border: none;
-    border-radius: 6px;
-    padding: 9px 18px;
-    font-size: 0.88rem;
+    border-radius: 5px;
+    padding: 10px 18px;
+    font-size: 0.9rem;
+    font-weight: 600;
     cursor: pointer;
-    margin-left: 10px;
+    white-space: nowrap;
+    transition: background 0.15s ease, transform 0.1s ease;
   }
-  button:disabled { background: #b5b5ad; cursor: not-allowed; }
-  button:hover:not(:disabled) { background: #234a3b; }
-  #ingestStatus, #queryStatus {
-    font-family: -apple-system, sans-serif;
-    font-size: 0.85rem;
-    color: var(--muted);
-    margin-top: 10px;
-  }
+  button:disabled { background: #c3b99e; cursor: not-allowed; }
+  button:hover:not(:disabled) { background: #2f5641; }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:focus-visible { outline: 2px solid var(--tab); outline-offset: 2px; }
+
+  .notebook-body { padding: 30px 24px 24px; }
+
   .chat {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    margin-bottom: 16px;
+    gap: 16px;
+    margin-bottom: 20px;
+    min-height: 60px;
   }
-  .msg {
-    padding: 12px 16px;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    line-height: 1.55;
-    max-width: 90%;
+
+  .empty-state {
+    font-size: 0.92rem;
+    color: var(--muted);
+    line-height: 1.6;
+    background: repeating-linear-gradient(
+      to bottom, transparent, transparent 27px, var(--rule) 28px
+    );
+    padding: 4px 2px 10px;
   }
+
+  .msg { font-size: 0.95rem; line-height: 1.6; max-width: 90%; }
+
   .msg.user {
     align-self: flex-end;
     background: var(--accent);
-    color: white;
+    color: #fdfaf2;
+    padding: 11px 16px;
+    border-radius: 8px 8px 2px 8px;
   }
+
   .msg.assistant {
     align-self: flex-start;
-    background: var(--accent-soft);
-    color: var(--ink);
+    position: relative;
+    background: #fffdf6;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--tab);
+    padding: 12px 16px;
+    border-radius: 2px 8px 8px 8px;
     white-space: pre-wrap;
   }
+
+  .cite {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78em;
+    background: var(--tab-soft);
+    color: #7a5a1c;
+    padding: 1px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+
   .msg.loading {
     align-self: flex-start;
     color: var(--muted);
     font-style: italic;
-    font-family: -apple-system, sans-serif;
-    font-size: 0.85rem;
+    font-size: 0.88rem;
   }
-  .input-row {
-    display: flex;
-    gap: 0;
+
+  .msg.error-msg {
+    align-self: flex-start;
+    color: var(--danger);
+    background: #fbeeea;
+    border: 1px solid #e3c3b6;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 0.9rem;
   }
+
+  .input-row { display: flex; gap: 10px; }
+
   #questionInput {
     flex: 1;
-    padding: 10px 14px;
+    padding: 11px 14px;
     border: 1px solid var(--line);
-    border-radius: 6px;
-    font-family: -apple-system, sans-serif;
+    border-radius: 5px;
+    background: #fffdf6;
+    font-family: inherit;
     font-size: 0.95rem;
+    color: var(--ink);
   }
-  #questionInput:focus { outline: 1px solid var(--accent); }
+  #questionInput:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  #questionInput::placeholder { color: #ab9f83; }
+
+  #queryStatus {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-top: 10px;
+    min-height: 1em;
+  }
+
+  @media (max-width: 460px) {
+    .catalog-body, .notebook-body { padding: 28px 18px 18px; }
+    .input-row { flex-direction: column; }
+    .input-row button { width: 100%; }
+    .catalog-footer { flex-direction: column; align-items: stretch; gap: 12px; }
+  }
 </style>
 </head>
 <body>
-<div class="app">
-  <h1>Study Assistant</h1>
-  <p class="subtitle">Upload notes, ask questions, get grounded answers with page citations.</p>
+<div class="room">
 
-  <div class="card">
-    <h2>1. Upload a PDF</h2>
-    <input type="file" id="pdfInput" accept="application/pdf">
-    <button id="uploadBtn">Ingest</button>
-    <div id="ingestStatus"></div>
-  </div>
+  <header class="masthead">
+    <p class="eyebrow">Reading Room · Study Desk</p>
+    <h1>Study Assistant</h1>
+    <p class="subtitle">Catalogue a PDF, then ask it anything. Every answer points back to the page it came from.</p>
+  </header>
 
-  <div class="card">
-    <h2>2. Ask a question</h2>
-    <div class="chat" id="chat"></div>
-    <div class="input-row">
-      <input type="text" id="questionInput" placeholder="What's the difference between TCP and UDP?">
-      <button id="askBtn">Ask</button>
+  <section class="catalog" id="uploadCard">
+    <span class="tab">Accession</span>
+    <div class="catalog-body">
+      <label class="field-label" for="pdfInput">Source document</label>
+      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose a PDF to upload">
+        <input type="file" id="pdfInput" accept="application/pdf" hidden>
+        <div class="dz-text" id="dzText">Drop a PDF here, or <span class="link-btn" id="browseBtn">choose a file</span></div>
+      </div>
+      <div class="catalog-footer">
+        <span class="stamp" id="ingestStatus">Not yet catalogued</span>
+        <button id="uploadBtn" disabled>Catalogue it</button>
+      </div>
     </div>
-    <div id="queryStatus"></div>
-  </div>
+  </section>
+
+  <section class="notebook" id="chatCard">
+    <span class="tab green">Questions</span>
+    <div class="notebook-body">
+      <div class="chat" id="chat">
+        <div class="empty-state" id="emptyState">Nothing catalogued yet. Once your PDF is added above, ask anything about it here — answers will cite the page they're drawn from.</div>
+      </div>
+      <div class="input-row">
+        <input type="text" id="questionInput" placeholder="What's the difference between TCP and UDP?">
+        <button id="askBtn">Ask</button>
+      </div>
+      <div class="input-row" style="margin-top: 10px;">
+        <button id="summarizeBtn" style="background: var(--tab);">Summarize this document</button>
+      </div>
+      <div id="queryStatus"></div>
+    </div>
+  </section>
+
 </div>
 
 <script>
-  const API_BASE = ""; // same origin — FastAPI serves this file too
+  const API_BASE = "";
 
   const pdfInput = document.getElementById("pdfInput");
+  const dropzone = document.getElementById("dropzone");
+  const dzText = document.getElementById("dzText");
+  const browseBtn = document.getElementById("browseBtn");
   const uploadBtn = document.getElementById("uploadBtn");
   const ingestStatus = document.getElementById("ingestStatus");
   const questionInput = document.getElementById("questionInput");
   const askBtn = document.getElementById("askBtn");
   const chat = document.getElementById("chat");
+  const emptyState = document.getElementById("emptyState");
+  const queryStatus = document.getElementById("queryStatus");
+
+  let selectedFile = null;
+  let currentSource = null; // filename of the currently catalogued PDF, scopes all Q&A to it
+  let chatHistory = []; // {question, answer} pairs — sent with each request so follow-ups
+                         // like "give me an example for each of them" resolve correctly
+
+  function setSelectedFile(file) {
+    if (!file) return;
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      ingestStatus.textContent = "That's not a PDF — try another file.";
+      ingestStatus.className = "stamp error";
+      return;
+    }
+    selectedFile = file;
+    dzText.innerHTML = `<strong>${escapeHtml(file.name)}</strong> selected`;
+    dropzone.classList.add("has-file");
+    uploadBtn.disabled = false;
+    ingestStatus.textContent = "Not yet catalogued";
+    ingestStatus.className = "stamp";
+  }
+
+  dropzone.addEventListener("click", () => pdfInput.click());
+  dropzone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pdfInput.click(); }
+  });
+  browseBtn.addEventListener("click", (e) => { e.stopPropagation(); pdfInput.click(); });
+  pdfInput.addEventListener("change", () => setSelectedFile(pdfInput.files[0]));
+
+  ["dragenter", "dragover"].forEach(evt =>
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add("drag"); })
+  );
+  ["dragleave", "drop"].forEach(evt =>
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove("drag"); })
+  );
+  dropzone.addEventListener("drop", (e) => {
+    const file = e.dataTransfer.files[0];
+    if (file) setSelectedFile(file);
+  });
 
   uploadBtn.addEventListener("click", async () => {
-    const file = pdfInput.files[0];
-    if (!file) { ingestStatus.textContent = "Choose a PDF first."; return; }
+    if (!selectedFile) { ingestStatus.textContent = "Choose a PDF first."; ingestStatus.className = "stamp error"; return; }
 
     uploadBtn.disabled = true;
-    ingestStatus.textContent = "Uploading and ingesting... this can take a minute.";
+    ingestStatus.textContent = "Reading and cataloguing… this can take a minute.";
+    ingestStatus.className = "stamp";
 
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", selectedFile);
 
     try {
       const res = await fetch(`${API_BASE}/ingest`, { method: "POST", body: formData });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Ingestion failed");
-      ingestStatus.textContent = `Done — ${data.chunks_stored} chunks stored from ${data.filename}.`;
+      if (!res.ok) throw new Error(data.detail || "Cataloguing failed");
+      ingestStatus.textContent = `Catalogued — ${data.chunks_stored} passages stored from ${data.filename}.`;
+      ingestStatus.className = "stamp ready";
+      currentSource = data.filename; // scope all future questions to this document
+      chatHistory = []; // new document catalogued — start the conversation fresh
     } catch (err) {
       ingestStatus.textContent = `Error: ${err.message}`;
-    } finally {
+      ingestStatus.className = "stamp error";
       uploadBtn.disabled = false;
     }
   });
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function renderAssistantText(text) {
+    let safe = escapeHtml(text);
+    safe = safe.replace(/(\(?\bp{1,2}\.?\s?\d+(?:\s?[-–]\s?\d+)?\)?)/gi, '<span class="cite">$1</span>');
+    return safe;
+  }
 
   async function askQuestion() {
     const question = questionInput.value.trim();
     if (!question) return;
 
+    if (emptyState) emptyState.remove();
     addMessage(question, "user");
     questionInput.value = "";
     askBtn.disabled = true;
 
     const loadingEl = document.createElement("div");
     loadingEl.className = "msg loading";
-    loadingEl.textContent = "Thinking...";
+    loadingEl.textContent = "Reading through the notes…";
     chat.appendChild(loadingEl);
     chat.scrollTop = chat.scrollHeight;
 
@@ -198,24 +419,34 @@
       const res = await fetch(`${API_BASE}/query`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question, history: chatHistory, source: currentSource }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Query failed");
       loadingEl.remove();
       addMessage(data.answer, "assistant");
+      chatHistory.push({ question, answer: data.answer });
     } catch (err) {
       loadingEl.remove();
-      addMessage(`Error: ${err.message}`, "assistant");
+      addMessage(`Couldn't get an answer: ${err.message}`, "error");
     } finally {
       askBtn.disabled = false;
+      questionInput.focus();
     }
   }
 
   function addMessage(text, role) {
     const el = document.createElement("div");
-    el.className = `msg ${role}`;
-    el.textContent = text;
+    if (role === "user") {
+      el.className = "msg user";
+      el.textContent = text;
+    } else if (role === "error") {
+      el.className = "msg error-msg";
+      el.textContent = text;
+    } else {
+      el.className = "msg assistant";
+      el.innerHTML = renderAssistantText(text);
+    }
     chat.appendChild(el);
     chat.scrollTop = chat.scrollHeight;
   }
@@ -223,6 +454,41 @@
   askBtn.addEventListener("click", askQuestion);
   questionInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") askQuestion();
+  });
+
+  const summarizeBtn = document.getElementById("summarizeBtn");
+  summarizeBtn.addEventListener("click", async () => {
+    if (!currentSource) {
+      addMessage("Catalogue a PDF first before summarizing.", "error");
+      return;
+    }
+    if (emptyState) emptyState.remove();
+    addMessage(`Summarize ${currentSource}`, "user");
+    summarizeBtn.disabled = true;
+
+    const loadingEl = document.createElement("div");
+    loadingEl.className = "msg loading";
+    loadingEl.textContent = "Reading the whole document…";
+    chat.appendChild(loadingEl);
+    chat.scrollTop = chat.scrollHeight;
+
+    try {
+      const res = await fetch(`${API_BASE}/summarize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: currentSource }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Summarize failed");
+      loadingEl.remove();
+      addMessage(data.answer, "assistant");
+      chatHistory.push({ question: `Summarize ${currentSource}`, answer: data.answer });
+    } catch (err) {
+      loadingEl.remove();
+      addMessage(`Couldn't summarize: ${err.message}`, "error");
+    } finally {
+      summarizeBtn.disabled = false;
+    }
   });
 </script>
 </body>
