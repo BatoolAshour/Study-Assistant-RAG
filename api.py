@@ -22,7 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from src.ingest import ingest_pdf
-from src.query import answer_question
+from src.query import answer_question, summarize_document
 
 DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -38,9 +38,20 @@ app.add_middleware(
 )
 
 
+class HistoryTurn(BaseModel):
+    question: str
+    answer: str
+
+
 class QuestionRequest(BaseModel):
     question: str
     top_k: int = 4
+    history: list[HistoryTurn] = []
+    source: str | None = None  # restrict to one ingested PDF; None = search all
+
+
+class SummarizeRequest(BaseModel):
+    source: str | None = None  # None = summarize everything ingested (usually not what you want)
 
 
 class QuestionResponse(BaseModel):
@@ -72,9 +83,23 @@ async def query(req: QuestionRequest):
         raise HTTPException(status_code=400, detail="Question cannot be empty")
 
     try:
-        answer = answer_question(req.question, top_k=req.top_k, verbose=False)
+        history = [h.dict() for h in req.history]
+        answer = answer_question(
+            req.question, top_k=req.top_k, verbose=False, history=history, source=req.source
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query failed: {e}")
+
+    return {"answer": answer}
+
+
+@app.post("/summarize", response_model=QuestionResponse)
+async def summarize(req: SummarizeRequest):
+    """Summarize one ingested document. Pass 'source' as the exact filename used at ingest time."""
+    try:
+        answer = summarize_document(source=req.source, verbose=False)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Summarize failed: {e}")
 
     return {"answer": answer}
 
