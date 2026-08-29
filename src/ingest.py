@@ -24,16 +24,45 @@ def load_pdf_pages(path):
     return pages
  
  
-def chunk_pages(pages, chunk_size=500, chunk_overlap=50):
-    """Split each page's text into overlapping chunks, keeping page number as metadata."""
+def chunk_pages(pages, chunk_size=1000, chunk_overlap=150):
+    """Join all page text into one continuous document (so chunks can span page
+    breaks instead of being cut off at them), split into overlapping chunks,
+    then map each chunk back to the page it starts on via character offsets."""
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
     )
-    chunks = []
+
+    # Build one big string plus a list of (start_offset, page_num) breakpoints
+    # so we can recover which page a given chunk started on.
+    full_text = ""
+    offsets = []  # (start_char_offset, page_num)
     for page_num, text in pages:
-        for piece in splitter.split_text(text):
-            chunks.append({"text": piece, "page": page_num})
+        offsets.append((len(full_text), page_num))
+        full_text += text + "\n"
+
+    pieces = splitter.split_text(full_text)
+
+    chunks = []
+    search_pos = 0
+    for piece in pieces:
+        # Find where this piece starts in full_text (search forward from the
+        # last match to handle repeated text correctly and stay efficient).
+        idx = full_text.find(piece, max(search_pos - chunk_overlap, 0))
+        if idx == -1:
+            idx = search_pos
+        search_pos = idx
+
+        # Page whose offset is the last one <= idx
+        page_num = offsets[0][1]
+        for start_offset, p in offsets:
+            if start_offset <= idx:
+                page_num = p
+            else:
+                break
+
+        chunks.append({"text": piece, "page": page_num})
+
     return chunks
  
  
@@ -58,7 +87,13 @@ def ingest_pdf(pdf_path):
  
     print("Storing in Chroma ...")
     client = chromadb.PersistentClient(path=CHROMA_PATH)
-    collection = client.get_or_create_collection(COLLECTION_NAME)
+    # hnsw:space="cosine" matters for MiniLM/BGE-style embeddings — Chroma's
+    # default is squared L2, which ranks results differently (and worse) for
+    # normalized sentence embeddings than cosine similarity does.
+    collection = client.get_or_create_collection(
+        COLLECTION_NAME,
+        metadata={"hnsw:space": "cosine"},
+    )
  
     ids = [f"{doc_name}-{i}" for i in range(len(chunks))]
     metadatas = [{"source": doc_name, "page": c["page"]} for c in chunks]
@@ -72,4 +107,3 @@ def ingest_pdf(pdf_path):
  
     print(f"Done. {len(chunks)} chunks stored in '{CHROMA_PATH}'.")
     return len(chunks)
-
