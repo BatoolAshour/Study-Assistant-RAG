@@ -7,7 +7,7 @@ Requires:
     GROQ_API_KEY environment variable (free key: https://console.groq.com/keys)
 """
 
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, CrossEncoder
 import chromadb
 import os
 import re
@@ -16,10 +16,14 @@ from groq import Groq
 CHROMA_PATH = "./chroma_db"
 COLLECTION_NAME = "documents"
 EMBED_MODEL = "all-MiniLM-L6-v2"
-TOP_K = 5
+RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+TOP_K = 5           # chunks actually sent to the LLM, after reranking
+FETCH_K = 20        # chunks pulled from Chroma before reranking narrows them down
+RERANK_MIN_SCORE = -3.0  # cross-encoder chunks scoring below this are dropped as irrelevant
 GROQ_MODEL = "openai/gpt-oss-20b"  # fast, good instruction-following, available on your account
 
 _model = None  # embedding model loaded once, reused across calls
+_reranker = None  # cross-encoder, loaded once, reused across calls
 _groq_client = None
 
 
@@ -28,6 +32,13 @@ def get_model():
     if _model is None:
         _model = SentenceTransformer(EMBED_MODEL)
     return _model
+
+
+def get_reranker():
+    global _reranker
+    if _reranker is None:
+        _reranker = CrossEncoder(RERANK_MODEL)
+    return _reranker
 
 
 def get_groq_client():
@@ -43,7 +54,12 @@ def get_groq_client():
     return _groq_client
 
 
-def retrieve(question, top_k=TOP_K, source=None):
+def retrieve(question, top_k=TOP_K, fetch_k=FETCH_K, source=None):
+    """Two-stage retrieval: cast a wide net with the fast bi-encoder (fetch_k),
+    then rerank with a cross-encoder that actually looks at query+chunk together
+    and keep only the top_k most relevant, dropping anything below a relevance
+    floor. Bi-encoder cosine similarity alone is a weak precision signal — this
+    is where most of the retrieval quality comes from."""
     model = get_model()
     query_embedding = model.encode([question]).tolist()
 
@@ -52,13 +68,23 @@ def retrieve(question, top_k=TOP_K, source=None):
 
     results = collection.query(
         query_embeddings=query_embedding,
-        n_results=top_k,
+        n_results=fetch_k,
         where={"source": source} if source else None,
     )
 
-    chunks = []
+    candidates = []
     for text, meta in zip(results["documents"][0], results["metadatas"][0]):
-        chunks.append({"text": text, "source": meta["source"], "page": meta["page"]})
+        candidates.append({"text": text, "source": meta["source"], "page": meta["page"]})
+
+    if not candidates:
+        return []
+
+    reranker = get_reranker()
+    pairs = [(question, c["text"]) for c in candidates]
+    scores = reranker.predict(pairs)
+
+    ranked = sorted(zip(scores, candidates), key=lambda x: x[0], reverse=True)
+    chunks = [c for score, c in ranked if score >= RERANK_MIN_SCORE][:top_k]
     return chunks
 
 
