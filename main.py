@@ -1,18 +1,3 @@
-"""
-main.py
-Single entry point for the RAG project.
-
-Usage:
-    # Ingest a PDF, then ask one question:
-    python main.py --pdf data/networking_notes.pdf --question "What's the difference between TCP and UDP?"
-
-    # Just ingest (no question):
-    python main.py --pdf data/networking_notes.pdf
-
-    # Already ingested? Just ask questions, one after another:
-    python main.py --chat
-"""
-
 import argparse
 from dotenv import load_dotenv
 

@@ -1,12 +1,3 @@
-"""
-src/query.py
-Retrieves relevant chunks for a question and asks Groq (free, fast API) to answer.
-Not meant to be run directly — called from main.py.
-
-Requires:
-    GROQ_API_KEY environment variable (free key: https://console.groq.com/keys)
-"""
-
 from sentence_transformers import SentenceTransformer, CrossEncoder
 import chromadb
 import os
@@ -55,11 +46,6 @@ def get_groq_client():
 
 
 def retrieve(question, top_k=TOP_K, fetch_k=FETCH_K, source=None):
-    """Two-stage retrieval: cast a wide net with the fast bi-encoder (fetch_k),
-    then rerank with a cross-encoder that actually looks at query+chunk together
-    and keep only the top_k most relevant, dropping anything below a relevance
-    floor. Bi-encoder cosine similarity alone is a weak precision signal — this
-    is where most of the retrieval quality comes from."""
     model = get_model()
     query_embedding = model.encode([question]).tolist()
 
@@ -139,9 +125,6 @@ def ask_groq(prompt, max_tokens=1500):
 
 
 def get_all_chunks(source=None):
-    """Retrieve every stored chunk (optionally filtered by source filename).
-    Used for whole-document tasks like summarization, where similarity search
-    to a vague query like 'summarize' isn't useful."""
     client = chromadb.PersistentClient(path=CHROMA_PATH)
     collection = client.get_collection(COLLECTION_NAME)
 
@@ -156,11 +139,6 @@ def get_all_chunks(source=None):
 
 
 def summarize_document(source=None, verbose=True, batch_size=15):
-    """Summarize an entire ingested document using map-reduce:
-    1. Split all chunks into batches
-    2. Summarize each batch (map)
-    3. Summarize the batch-summaries into one final summary (reduce)
-    This avoids hitting per-request token limits on large documents."""
     chunks = get_all_chunks(source=source)
     if not chunks:
         return "No document found. Ingest a PDF first."
@@ -204,13 +182,6 @@ Final summary:"""
 
 
 def answer_question(question, top_k=TOP_K, verbose=True, history=None, source=None):
-    """Full pipeline: retrieve -> build prompt -> ask Groq. Returns the answer string.
-    history: optional list of {"question": ..., "answer": ...} dicts from earlier turns,
-    used so follow-ups like 'give me an example for each of them' resolve correctly.
-    source: optional filename — restricts retrieval to that one ingested document."""
-
-    # For retrieval, combine the last question with the current one so vague
-    # follow-ups ("give an example for each of them") still pull relevant chunks.
     retrieval_query = question
     if history:
         retrieval_query = f"{history[-1]['question']} {question}"

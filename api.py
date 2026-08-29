@@ -1,15 +1,3 @@
-"""
-api.py
-FastAPI server for the RAG project. Wraps ingest_pdf() and answer_question()
-behind HTTP endpoints so a frontend (or anything else) can call them.
-
-Run:
-    uvicorn api:app --reload
-
-Then open http://localhost:8000 to use the frontend,
-or http://localhost:8000/docs to test endpoints directly.
-"""
-
 import os
 import shutil
 
